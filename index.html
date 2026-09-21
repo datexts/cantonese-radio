@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cantonese Radio</title>
+<meta name="theme-color" content="#141010">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cantonese Radio">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --bg: #141010;
+    --card: #1f1a1a;
+    --line: #2e2727;
+    --red: #d62828;
+    --red-glow: rgba(214, 40, 40, 0.45);
+    --amber: #e0a526;
+    --amber-glow: rgba(224, 165, 38, 0.5);
+    --green: #22a55b;
+    --green-glow: rgba(34, 165, 91, 0.5);
+    --text: #f5efe9;
+    --muted: #9a8f88;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "PingFang TC", "Noto Sans TC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top, 0px) 20px env(safe-area-inset-bottom, 0px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  main {
+    width: 100%;
+    max-width: 400px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 28px 0;
+  }
+  header { text-align: center; margin-bottom: 36px; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0; letter-spacing: 0.02em; }
+  .tagline { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .player { display: flex; justify-content: center; margin-bottom: 36px; }
+  #playBtn {
+    width: 168px; height: 168px;
+    border-radius: 50%;
+    border: none;
+    --btn: var(--red);
+    --glow: var(--red-glow);
+    background: var(--btn);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 14px 40px var(--glow);
+    display: grid; place-items: center;
+    transition: transform 0.12s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #playBtn:active { transform: scale(0.95); }
+  #playBtn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  #playBtn svg { width: 64px; height: 64px; fill: #fff; }
+  /* 停咗 = 紅；連接緊 = 橙黃（閃）；聽緊 = 綠 */
+  #playBtn.loading { --btn: var(--amber); --glow: var(--amber-glow); animation: pulse 1.2s ease-in-out infinite; }
+  #playBtn.playing { --btn: var(--green); --glow: var(--green-glow); }
+  @keyframes pulse { 50% { box-shadow: 0 14px 64px var(--btn); } }
+  @media (prefers-reduced-motion: reduce) { #playBtn.loading { animation: none; } }
+
+  .now {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px 22px;
+  }
+  .now-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--green); box-shadow: 0 0 0 4px rgba(34,165,91,0.25); }
+  .dot.wait { background: var(--amber); }
+  #nowTitle { font-size: 22px; font-weight: 600; margin: 8px 0 0; line-height: 1.35; }
+  #nowTime { font-size: 14px; color: var(--muted); margin-top: 4px; }
+  .next {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 15px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  .next b { color: var(--text); font-weight: 500; }
+
+  .stations {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+    margin: -12px 0 28px;
+  }
+  .stations[hidden] { display: none; }
+  .station-btn {
+    font: inherit; font-size: 15px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .station-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .station-btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  .station-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .next[hidden] { display: none; }
+  .station-btn.add { min-width: 44px; padding: 9px 14px; font-size: 18px; line-height: 1; }
+  .edit-link {
+    display: block; margin: 12px auto 0; font: inherit; font-size: 14px;
+    background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer;
+  }
+  .edit-link[hidden] { display: none; }
+
+  dialog {
+    width: min(360px, calc(100vw - 32px));
+    border: none; border-radius: 20px; padding: 22px;
+    background: var(--card); color: var(--text);
+  }
+  dialog::backdrop { background: rgba(0,0,0,0.6); }
+  dialog h2 { font-size: 19px; margin: 0 0 16px; }
+  dialog label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+  dialog input {
+    display: block; width: 100%; margin-top: 6px;
+    font: inherit; font-size: 16px; /* 16px 以上 iPhone 先唔會自動放大 */
+    padding: 11px 12px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  dialog input:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+  #formMsg { font-size: 14px; min-height: 20px; margin: 4px 0 14px; color: var(--muted); line-height: 1.5; }
+  #formMsg.ok { color: #6fd39a; }
+  #formMsg.bad { color: #ff8a80; }
+  .form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  #tabManual .form-actions { margin-bottom: 4px; }
+  .tabs { display: flex; gap: 6px; background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+  .tabs[hidden], #tabSearch[hidden], #tabManual[hidden] { display: none; }
+  .tabs button {
+    flex: 1; font: inherit; font-size: 15px; padding: 8px; border-radius: 9px;
+    border: none; background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--card); color: var(--text); font-weight: 600; }
+  dialog select {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 10px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  .filters { display: flex; gap: 8px; margin: 10px 0; }
+  .search-go {
+    width: 100%; font: inherit; font-size: 15px; font-weight: 600; padding: 11px; border-radius: 12px;
+    border: none; background: var(--text); color: var(--bg); cursor: pointer;
+  }
+  .search-go:disabled { opacity: 0.5; }
+  #sResults { list-style: none; margin: 12px 0 0; padding: 0; max-height: 42vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #sResults li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  #sResults li:first-child { border-top: none; }
+  #sResults img, #sResults .noicon { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: var(--bg); flex: none; }
+  #sResults .info { flex: 1; min-width: 0; }
+  #sResults .nm { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sResults .meta { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sResults button {
+    flex: none; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px;
+    border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer;
+  }
+  #sResults button.add-it { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  #sResults button:disabled { opacity: 0.5; }
+  #sResults .empty { color: var(--muted); font-size: 14px; display: block; border: none; }
+  .form-actions button {
+    flex: 1; font: inherit; font-size: 15px; padding: 11px 12px; border-radius: 12px;
+    border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer;
+  }
+  .form-actions .primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  .form-actions .danger { color: #ff8a80; flex-basis: 100%; }
+  .form-actions button:disabled { opacity: 0.5; }
+
+  #status { text-align: center; font-size: 14px; color: var(--muted); margin-top: 18px; min-height: 20px; }
+  #status.error { color: #ff8a80; }
+
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 12px 0 16px; line-height: 1.6; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="stationName">Cantonese Radio</h1>
+    <div class="tagline" id="stationTagline"></div>
+  </header>
+
+  <div class="player">
+    <button id="playBtn" aria-label="播放">
+      <svg viewBox="0 0 24 24" id="icon"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+  </div>
+
+  <nav class="stations" id="stations" aria-label="轉台" hidden></nav>
+
+  <section class="now" aria-live="polite">
+    <div class="now-label"><span class="dot" id="dot"></span><span id="nowLabel">而家節目</span></div>
+    <p id="nowTitle">—</p>
+    <div id="nowTime"></div>
+    <div class="next" id="nextRow"><span>下一個</span><span><b id="nextTitle">—</b> <span id="nextTime"></span></span></div>
+  </section>
+
+  <div id="status"></div>
+  <button class="edit-link" id="editLink" hidden>改名或者刪除呢個台</button>
+</main>
+
+<dialog id="stationForm">
+  <form method="dialog" id="formEl">
+    <h2 id="formTitle">加電台</h2>
+    <div class="tabs" id="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="search" aria-selected="true">搜尋</button>
+      <button type="button" role="tab" data-tab="manual" aria-selected="false">自己輸入</button>
+    </div>
+
+    <div id="tabSearch">
+      <input id="sQuery" type="search" placeholder="台名，例如 2CR（可以留空）" autocomplete="off" enterkeyhint="search">
+      <div class="filters">
+        <select id="sLang" aria-label="語言">
+          <option value="cantonese">廣東話</option>
+          <option value="chinese">中文</option>
+          <option value="">不限語言</option>
+        </select>
+        <select id="sCountry" aria-label="地方">
+          <option value="">所有地方</option>
+          <option value="HK">香港</option>
+          <option value="MO">澳門</option>
+          <option value="AU">澳洲</option>
+          <option value="GB">英國</option>
+          <option value="CA">加拿大</option>
+          <option value="US">美國</option>
+          <option value="NZ">紐西蘭</option>
+          <option value="SG">新加坡</option>
+          <option value="MY">馬來西亞</option>
+          <option value="CN">中國</option>
+          <option value="TW">台灣</option>
+        </select>
+      </div>
+      <button type="button" id="sGo" class="search-go">搜尋</button>
+      <ul id="sResults" aria-live="polite"></ul>
+    </div>
+
+    <div id="tabManual" hidden>
+      <label>名稱
+        <input id="fName" maxlength="20" placeholder="例如：2CR" autocomplete="off">
+      </label>
+      <label>直播連結
+        <input id="fUrl" type="url" inputmode="url" placeholder="https://…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </label>
+      <div class="form-actions">
+        <button type="button" id="fTest">試聽</button>
+        <button type="button" id="fSave" class="primary">儲存</button>
+      </div>
+    </div>
+
+    <div id="formMsg"></div>
+    <div class="form-actions">
+      <button type="button" id="fCancel">關閉</button>
+      <button type="button" id="fDelete" class="danger" hidden>刪除呢個台</button>
+    </div>
+  </form>
+</dialog>
+
+<footer id="footer"></footer>
+
+<audio id="audio" preload="none" playsinline></audio>
+
+<!-- 電台清單：要加台改 stations.js，唔使改呢個 file -->
+<script src="stations.js"></script>
+<script>
+// ===== 電台登記處 =====
+// 每個 stations/xxx.js 會 call CantoneseRadio.add({...}) 登記自己
+const registry = {};
+window.CantoneseRadio = { add: s => { registry[s.id] = prepareStation(s); } };
+
+const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const toMins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+function prepareStation(s) {
+  s.dayStartMins = toMins(s.dayStart || '0:00');
+  if (s.schedule) {
+    s.parsed = {};
+    for (const d of DAYS) {
+      s.parsed[d] = (s.schedule[d] || []).map(str => {
+        const [t, name] = str.split('|');
+        let mins = toMins(t);
+        if (mins < s.dayStartMins) mins += 24 * 60; // 凌晨節目排喺當日最尾
+        return { mins, name, label: t.padStart(5, '0') };
+      });
+    }
+  }
+  return s;
+}
+
+// 逐個載入 stations/ 入面嘅 file，全部載完先開始
+function loadStations(done) {
+  let left = STATION_FILES.length;
+  STATION_FILES.forEach(id => {
+    const el = document.createElement('script');
+    el.src = 'stations/' + id + '.js';
+    el.onload = el.onerror = () => { if (--left === 0) done(); };
+    document.head.appendChild(el);
+  });
+}
+
+// ===== 節目計算（跟每個台自己嘅時區）=====
+function timeIn(tz) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type).value;
+  return { day: DAYS.indexOf(get('weekday').toLowerCase()), mins: Number(get('hour')) * 60 + Number(get('minute')) };
+}
+
+function currentProgramme(s) {
+  if (!s.parsed) return null;
+  let { day, mins } = timeIn(s.timeZone);
+  if (mins < s.dayStartMins) { day = (day + 6) % 7; mins += 24 * 60; } // 未到當日開始時間，算返前一日
+  const list = s.parsed[DAYS[day]];
+  if (!list.length) return null;
+  let i = list.length - 1;
+  while (i > 0 && list[i].mins > mins) i--;
+  const next = list[i + 1] || s.parsed[DAYS[(day + 1) % 7]][0];
+  return { now: list[i], next };
+}
+
+// ===== 畫面 =====
+const $ = id => document.getElementById(id);
+const audio = $('audio');
+const btn = $('playBtn');
+const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
+const ICON_STOP = '<path d="M7 7h10v10H7z"/>';
+const deviceTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+let state = 'stopped'; // stopped | loading | reconnecting | playing
+let current = null;    // 而家揀咗嘅台
+
+function renderStation() {
+  $('stationName').textContent = current.name;
+  $('stationTagline').textContent = current.tagline || (current.custom ? '自己加嘅電台' : '');
+  const f = $('footer');
+  if (current.website) {
+    f.innerHTML = '非官方播放器，節目及直播由 <a target="_blank" rel="noopener"></a> 提供' +
+      (current.parsed ? '<br>節目表以官網為準' : '');
+    const a = f.querySelector('a');
+    a.href = current.website; a.textContent = current.name;
+  } else {
+    f.textContent = current.custom ? '呢個台係你自己加嘅，只存喺呢部機' : '非官方播放器';
+  }
+  $('editLink').hidden = !current.custom;
+  document.querySelectorAll('.station-btn[data-id]').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.id === current.id ? 'true' : 'false'));
+  renderProgramme();
+}
+
+function renderProgramme() {
+  const p = currentProgramme(current);
+  const tzNote = current.timeZone !== deviceTZ && current.timeZoneLabel ? '（' + current.timeZoneLabel + '）' : '';
+  if (p) {
+    $('nowTitle').textContent = p.now.name;
+    $('nowTime').textContent = p.now.label + ' 開始' + tzNote;
+    $('nextTitle').textContent = p.next.name;
+    $('nextTime').textContent = p.next.label;
+    $('nextRow').hidden = false;
+  } else {
+    $('nowTitle').textContent = current.name;
+    $('nowTime').textContent = '';
+    $('nextRow').hidden = true;
+  }
+  const title = p ? p.now.name : current.name;
+  document.title = title + ' · Cantonese Radio';
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist: current.name,
+      album: 'Cantonese Radio',
+      artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }]
+    });
+  }
+}
+
+function setState(s, msg = '') {
+  state = s;
+  const waiting = s === 'loading' || s === 'reconnecting';
+  btn.classList.toggle('loading', waiting);
+  btn.classList.toggle('playing', s === 'playing');
+  $('dot').classList.toggle('wait', waiting);
+  $('icon').innerHTML = s === 'stopped' ? ICON_PLAY : ICON_STOP;
+  btn.setAttribute('aria-label', s === 'stopped' ? '播放' : '停止');
+  $('dot').classList.toggle('live', s === 'playing');
+  $('nowLabel').textContent = s === 'playing' ? '直播中' : '而家節目';
+  const st = $('status');
+  st.textContent = msg;
+  st.classList.toggle('error', s === 'stopped' && msg !== '');
+}
+
+function switchStation(id) {
+  if (current && current.id === id) return;
+  const wasPlaying = state !== 'stopped';
+  if (wasPlaying) stop();
+  current = registry[id];
+  try { localStorage.setItem('lastStation', id); } catch (e) {}
+  renderStation();
+  if (wasPlaying) play(); // 播緊就直接轉去新台
+}
+
+// ===== 播放 + 斷線自動重駁 =====
+// wantPlaying = 用家想唔想聽。用家撳停先會變 false；
+// 斷線、緩衝太耐、條流中斷，只要 wantPlaying 仲係 true 就會自動重駁。
+let wantPlaying = false;
+let retryCount = 0;
+let retryTimer = null;
+let stallTimer = null;
+let lastTime = 0;
+let lastProgressAt = 0;
+
+const STALL_LIMIT = 15000;   // 緩衝超過 15 秒就重駁
+const FROZEN_LIMIT = 20000;  // 播緊但 20 秒冇進度就重駁
+const MAX_DELAY = 10000;     // 重駁間隔最長 10 秒
+
+function clearTimers() {
+  clearTimeout(retryTimer); retryTimer = null;
+  clearTimeout(stallTimer); stallTimer = null;
+}
+
+function startStream() {
+  clearTimers();
+  lastTime = 0;
+  lastProgressAt = Date.now();
+  audio.src = current.stream; // 重新設定 src = 重新連接，會跳到最新直播
+  // 連接超時：15 秒都未開始播（又冇報錯），當失敗再試
+  stallTimer = setTimeout(() => { stallTimer = null; scheduleReconnect(); }, STALL_LIMIT);
+  audio.play().catch(err => {
+    if (err.name === 'AbortError' || !wantPlaying) return;
+    if (err.name === 'NotAllowedError') {
+      // iOS 唔畀喺背景自己開始播：要用家撳一下（紅掣或者車上嘅播放掣都得）
+      stop('撳紅掣或者車上嘅播放掣再播');
+      return;
+    }
+    scheduleReconnect();
+  });
+}
+
+function scheduleReconnect() {
+  if (!wantPlaying || retryTimer) return;
+  clearTimeout(stallTimer); stallTimer = null;
+  retryCount++;
+  const delay = Math.min(2000 * 2 ** (retryCount - 1), MAX_DELAY); // 2、4、8、10、10…秒
+  setState('reconnecting', `訊號斷咗，${Math.round(delay / 1000)} 秒後重新連接（第 ${retryCount} 次）`);
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    if (!wantPlaying) return;
+    setState('reconnecting', `重新連接緊…（第 ${retryCount} 次）`);
+    startStream();
+  }, delay);
+}
+
+function play() {
+  if (!current) return;
+  wantPlaying = true;
+  retryCount = 0;
+  setState('loading', '連接緊…');
+  startStream();
+}
+
+function stop(msg = '') {
+  wantPlaying = false;
+  clearTimers();
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  setState('stopped', msg);
+}
+
+btn.addEventListener('click', () => state === 'stopped' ? play() : stop());
+
+audio.addEventListener('playing', () => {
+  if (!wantPlaying) return;
+  clearTimers();
+  retryCount = 0;
+  lastProgressAt = Date.now();
+  setState('playing');
+});
+
+function startStallTimer() {
+  if (!wantPlaying || stallTimer || retryTimer) return;
+  if (state === 'playing') setState('loading', '緩衝緊…');
+  stallTimer = setTimeout(() => { stallTimer = null; scheduleReconnect(); }, STALL_LIMIT);
+}
+audio.addEventListener('waiting', startStallTimer);
+audio.addEventListener('stalled', startStallTimer);
+
+audio.addEventListener('error', () => {
+  if (!wantPlaying || !audio.getAttribute('src')) return; // 自己停嗰陣唔理
+  scheduleReconnect();
+});
+
+audio.addEventListener('ended', () => { if (wantPlaying) scheduleReconnect(); });
+
+// 被其他嘢暫停（例如有電話打嚟、開咗其他音樂 App）：唔搶返，等用家決定
+audio.addEventListener('pause', () => {
+  if (!wantPlaying) return;
+  setTimeout(() => {
+    if (!wantPlaying || retryTimer || audio.ended || audio.error || !audio.paused) return;
+    stop('播放被中斷，撳紅掣或者車上嘅播放掣再播');
+  }, 500);
+});
+
+// 網絡返咗就即刻駁，唔使等倒數
+window.addEventListener('online', () => {
+  if (wantPlaying && state !== 'playing') { clearTimers(); startStream(); }
+});
+
+// 看門狗：有啲斷線唔會出任何 event，淨係會「靜靜哋停咗」
+setInterval(() => {
+  if (!wantPlaying) return;
+  if (state !== 'playing') {
+    // 保險：想聽但又冇播緊、冇排住重駁、冇計緊超時 = 卡死咗，即刻再試
+    if (!retryTimer && !stallTimer) scheduleReconnect();
+    return;
+  }
+  if (audio.currentTime > lastTime) {
+    lastTime = audio.currentTime;
+    lastProgressAt = Date.now();
+  } else if (Date.now() - lastProgressAt > FROZEN_LIMIT) {
+    scheduleReconnect();
+  }
+}, 5000);
+
+
+if ('mediaSession' in navigator) {
+  navigator.mediaSession.setActionHandler('play', play);
+  navigator.mediaSession.setActionHandler('pause', () => stop());
+  navigator.mediaSession.setActionHandler('stop', () => stop());
+}
+
+// ===== 自己加嘅電台（存喺呢部機）=====
+const CUSTOM_KEY = 'customStations';
+let fileIds = [];
+
+function loadCustom() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY)) || []; } catch (e) { return []; }
+}
+function saveCustom(list) {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+}
+function customToStation(c) {
+  return { id: c.id, name: c.name, shortName: c.name, stream: c.stream, custom: true };
+}
+function allIds() {
+  return fileIds.concat(loadCustom().map(c => c.id));
+}
+
+// 轉台掣：file 入面嘅台 + 自己加嘅台 + 「＋」
+function renderStationRow() {
+  const nav = $('stations');
+  nav.innerHTML = '';
+  for (const id of allIds()) {
+    const st = registry[id];
+    const b = document.createElement('button');
+    b.className = 'station-btn';
+    b.dataset.id = id;
+    b.textContent = st.shortName || st.name;
+    b.setAttribute('aria-pressed', current && current.id === id ? 'true' : 'false');
+    b.addEventListener('click', () => { if (!b.dataset.long) switchStation(id); delete b.dataset.long; });
+    if (st.custom) addLongPress(b, () => openForm(id));
+    nav.appendChild(b);
+  }
+  const add = document.createElement('button');
+  add.className = 'station-btn add';
+  add.textContent = '＋';
+  add.setAttribute('aria-label', '加電台');
+  add.addEventListener('click', () => openForm(null));
+  nav.appendChild(add);
+  nav.hidden = false;
+}
+
+// 長按（iPhone）或者右撳（Mac）自己加嘅台 = 改名 / 刪除
+function addLongPress(el, fn) {
+  let t = null;
+  el.addEventListener('pointerdown', () => { t = setTimeout(() => { el.dataset.long = '1'; fn(); }, 600); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(e => el.addEventListener(e, () => clearTimeout(t)));
+  el.addEventListener('contextmenu', e => { e.preventDefault(); clearTimeout(t); fn(); });
+}
+
+// ===== 加台 / 改台表格 =====
+const dlg = $('stationForm');
+const fName = $('fName'), fUrl = $('fUrl'), formMsg = $('formMsg');
+let editingId = null;
+let tester = null;
+let testedUrl = null; // 試聽成功嘅 link
+
+function msg(text, kind = '') { formMsg.textContent = text; formMsg.className = kind; }
+
+function showTab(name) {
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false'));
+  $('tabSearch').hidden = name !== 'search';
+  $('tabManual').hidden = name !== 'manual';
+  msg(name === 'manual' && !editingId ? '填名稱同直播連結，撳「試聽」確認有聲' : '');
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { stopTest(); showTab(b.dataset.tab); }));
+
+function openForm(id) {
+  editingId = id;
+  testedUrl = null;
+  const c = id ? loadCustom().find(x => x.id === id) : null;
+  $('formTitle').textContent = c ? '改電台' : '加電台';
+  $('tabs').hidden = !!c;
+  $('fDelete').hidden = !c;
+  fName.value = c ? c.name : '';
+  fUrl.value = c ? c.stream : '';
+  dlg.showModal();
+  if (c) { showTab('manual'); msg(''); }
+  else {
+    showTab('search');
+    if (!$('sResults').children.length) search(); // 第一次打開就搜預設（廣東話、最多人聽）
+  }
+}
+
+function closeForm() { stopTest(); dlg.close(); }
+
+// 撳 Enter / 鍵盤上嘅「搜尋」：搜尋格就搜，輸入格就儲存；唔好直接關咗個表格
+$('formEl').addEventListener('submit', e => e.preventDefault());
+$('sQuery').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+[fName, fUrl].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('fSave').click(); } }));
+
+// 檢查條 link，有問題就講原因
+function checkUrl(raw) {
+  const url = raw.trim().replace(/\s+/g, '');
+  if (!url) return { error: '未填直播連結' };
+  if (!/^https?:\/\//i.test(url)) return { error: '連結要由 http:// 或者 https:// 開頭' };
+  if (/\.(pls|m3u)(\?|#|$)/i.test(url))
+    return { error: '呢條係播放清單檔（.pls / .m3u），唔係直播本身。用文字編輯器打開佢，入面會有條真正嘅直播連結' };
+  const warn = /^http:\/\//i.test(url) && location.protocol === 'https:'
+    ? '（http 開頭嘅連結喺 GitHub 版有機會被 Safari 擋住）' : '';
+  return { url, warn };
+}
+
+function stopTest() {
+  if (tester) { tester.onplaying = tester.onerror = null; tester.pause(); tester.removeAttribute('src'); tester.load(); }
+  clearTimeout(stopTest.t);
+  tester = null;
+}
+
+function setBusy(on) {
+  $('fTest').disabled = $('fSave').disabled = on;
+  document.querySelectorAll('#sResults button').forEach(b => b.disabled = on);
+}
+
+// 試聽：成功 resolve(true)，失敗 resolve(false)
+function runTest(url) {
+  stopTest();
+  if (state !== 'stopped') stop(); // 唔好兩把聲撞埋
+  msg('試緊…', '');
+  setBusy(true);
+  return new Promise(resolve => {
+    const a = new Audio();
+    tester = a;
+    const done = ok => { clearTimeout(stopTest.t); setBusy(false); resolve(ok); };
+    const fail = text => { if (tester !== a) return; stopTest(); msg(text, 'bad'); done(false); };
+    a.onplaying = () => {
+      testedUrl = url;
+      msg('有聲，條連結啱', 'ok');
+      done(true);
+      stopTest.t = setTimeout(stopTest, 6000); // 試聽 6 秒
+    };
+    a.onerror = () => fail('播唔到。條連結可能已經死咗');
+    stopTest.t = setTimeout(() => fail('等咗 15 秒都未有聲，條連結可能唔啱'), 15000);
+    a.src = url;
+    a.play().catch(err => { if (err.name !== 'AbortError') fail('播唔到。條連結可能已經死咗'); });
+  });
+}
+
+// 加入或者更新一個自己嘅台，完成後轉去嗰個台
+function saveStation({ name, stream, homepage, rbId }) {
+  const list = loadCustom();
+  let id = editingId;
+  if (id) {
+    const c = list.find(x => x.id === id);
+    c.name = name; c.stream = stream;
+  } else {
+    const same = list.find(x => x.stream === stream);
+    if (same) { closeForm(); current = null; switchStation(same.id); return; } // 已經加咗
+    id = 'u' + Date.now().toString(36);
+    list.push({ id, name, stream, homepage, rbId });
+  }
+  if (!saveCustom(list)) { msg('儲存唔到（呢部機唔畀存資料）', 'bad'); return; }
+  registry[id] = customToStation(list.find(x => x.id === id));
+  closeForm();
+  current = null; // 等 switchStation 一定會更新畫面
+  renderStationRow();
+  switchStation(id);
+}
+
+$('fTest').addEventListener('click', () => {
+  const r = checkUrl(fUrl.value);
+  if (r.error) return msg(r.error, 'bad');
+  runTest(r.url).then(ok => { if (ok && r.warn) msg('有聲，條連結啱' + r.warn, 'ok'); });
+});
+
+$('fSave').addEventListener('click', async () => {
+  const name = fName.value.trim();
+  if (!name) return msg('未填名稱', 'bad');
+  const r = checkUrl(fUrl.value);
+  if (r.error) return msg(r.error, 'bad');
+  if (testedUrl !== r.url && !(await runTest(r.url))) return; // 未試過就自動試，冇聲唔存
+  stopTest();
+  saveStation({ name, stream: r.url });
+});
+
+$('fCancel').addEventListener('click', closeForm);
+dlg.addEventListener('cancel', stopTest); // 撳 Esc
+
+$('fDelete').addEventListener('click', () => {
+  if (!confirm('刪除「' + fName.value.trim() + '」？')) return;
+  const list = loadCustom().filter(x => x.id !== editingId);
+  saveCustom(list);
+  delete registry[editingId];
+  const wasCurrent = current && current.id === editingId;
+  closeForm();
+  if (wasCurrent) {
+    if (state !== 'stopped') stop();
+    current = null;
+    const first = allIds()[0];
+    if (first) switchStation(first);
+    else { $('stationName').textContent = 'Cantonese Radio'; $('stationTagline').textContent = ''; $('editLink').hidden = true; setState('stopped', '未有電台，撳「＋」加一個'); }
+  }
+  renderStationRow();
+});
+
+// ===== 搜尋公開電台目錄（Radio Browser）=====
+// 社群維護嘅免費資料庫：https://www.radio-browser.info
+// 有幾部伺服器，一部唔得就試下一部
+const RB_SERVERS = [
+  'https://all.api.radio-browser.info',
+  'https://de1.api.radio-browser.info',
+  'https://de2.api.radio-browser.info',
+  'https://fi1.api.radio-browser.info'
+];
+let rbServer = null; // 記住邊部得
+
+async function rbFetch(path) {
+  const list = rbServer ? [rbServer, ...RB_SERVERS.filter(x => x !== rbServer)] : RB_SERVERS;
+  for (const base of list) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const res = await fetch(base + path, { signal: ctl.signal });
+      clearTimeout(t);
+      if (!res.ok) continue;
+      rbServer = base;
+      return await res.json();
+    } catch (e) { clearTimeout(t); }
+  }
+  throw new Error('all servers failed');
+}
+
+const flag = cc => cc && cc.length === 2
+  ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '';
+
+let searchSeq = 0;
+async function search() {
+  const seq = ++searchSeq;
+  const q = $('sQuery').value.trim();
+  const params = new URLSearchParams({ hidebroken: 'true', order: 'clickcount', reverse: 'true', limit: '40' });
+  if (q) params.set('name', q);
+  if ($('sLang').value) params.set('language', $('sLang').value);
+  if ($('sCountry').value) params.set('countrycode', $('sCountry').value);
+
+  const ul = $('sResults');
+  ul.innerHTML = '';
+  msg('搜緊…');
+  $('sGo').disabled = true;
+  let rows;
+  try { rows = await rbFetch('/json/stations/search?' + params); }
+  catch (e) { if (seq === searchSeq) { $('sGo').disabled = false; msg('搜尋服務暫時用唔到，遲啲再試，或者用「自己輸入」', 'bad'); } return; }
+  if (seq !== searchSeq) return; // 已經有新嘅搜尋
+  $('sGo').disabled = false;
+
+  // 同一個台有時會登記咗幾次，揀最多人聽嗰個
+  const seen = new Set();
+  rows = rows.filter(r => {
+    const k = (r.url_resolved || r.url || '').replace(/^https?:/, '');
+    if (!k || seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  if (!rows.length) {
+    msg('');
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = $('sLang').value ? '搵唔到。試下語言揀「不限語言」，好多台冇填語言' : '搵唔到。試下改個台名，或者揀「所有地方」';
+    ul.appendChild(li);
+    return;
+  }
+  msg(rows.length + ' 個結果，撳「試聽」先聽下，啱就「加入」');
+
+  for (const r of rows) {
+    const li = document.createElement('li');
+    const icon = document.createElement(r.favicon ? 'img' : 'span');
+    if (r.favicon) {
+      icon.src = r.favicon; icon.alt = ''; icon.loading = 'lazy';
+      icon.onerror = () => { icon.replaceWith(Object.assign(document.createElement('span'), { className: 'noicon' })); };
+    } else icon.className = 'noicon';
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = r.name.trim(); // 用 textContent，唔信任外來資料
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = [flag(r.countrycode) + ' ' + (r.state || r.country || ''), r.codec, r.bitrate ? r.bitrate + 'k' : ''].filter(x => x && x.trim()).join('  ');
+    info.append(nm, meta);
+
+    const url = r.url_resolved || r.url;
+    const tryBtn = document.createElement('button');
+    tryBtn.type = 'button'; tryBtn.textContent = '試聽';
+    tryBtn.addEventListener('click', () => {
+      const c = checkUrl(url);
+      if (c.error) return msg(c.error, 'bad');
+      runTest(c.url);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'add-it'; addBtn.textContent = '加入';
+    addBtn.addEventListener('click', async () => {
+      const c = checkUrl(url);
+      if (c.error) return msg(c.error, 'bad');
+      if (testedUrl !== c.url && !(await runTest(c.url))) return; // 冇聲唔加
+      stopTest();
+      rbFetch('/json/url/' + r.stationuuid).catch(() => {}); // 話畀目錄知有人聽，幫佢排名（佢哋嘅使用守則）
+      saveStation({ name: r.name.trim().slice(0, 20), stream: c.url, homepage: r.homepage || '', rbId: r.stationuuid });
+    });
+
+    li.append(icon, info, tryBtn, addBtn);
+    ul.appendChild(li);
+  }
+}
+$('sGo').addEventListener('click', search);
+['sLang', 'sCountry'].forEach(id => $(id).addEventListener('change', search));
+
+$('editLink').addEventListener('click', () => current && current.custom && openForm(current.id));
+
+// ===== 開始 =====
+loadStations(() => {
+  fileIds = STATION_FILES.filter(id => registry[id]);
+  loadCustom().forEach(c => { registry[c.id] = customToStation(c); });
+  const ids = allIds();
+
+  let last = null;
+  try { last = localStorage.getItem('lastStation'); } catch (e) {}
+  if (ids.length) current = registry[ids.includes(last) ? last : ids[0]];
+  renderStationRow();
+
+  if (!current) {
+    $('stationName').textContent = 'Cantonese Radio';
+    setState('stopped', '未有電台，撳「＋」加一個');
+    return;
+  }
+  renderStation();
+  setInterval(renderProgramme, 30 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderProgramme(); });
+});
+</script>
+</body>
+</html>
