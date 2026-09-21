@@ -1,6 +1,6 @@
 {
-  "name": "2CR",
-  "short_name": "2CR",
+  "name": "mCR",
+  "short_name": "mCR",
   "description": "廣東話電台直播播放器（自用）",
   "start_url": "./",
   "scope": "./",
