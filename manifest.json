@@ -1,6 +1,6 @@
 {
-  "name": "Cantonese Radio",
-  "short_name": "Cantonese Radio",
+  "name": "2CR",
+  "short_name": "2CR",
   "description": "廣東話電台直播播放器（自用）",
   "start_url": "./",
   "scope": "./",
@@ -8,7 +8,15 @@
   "background_color": "#141010",
   "theme_color": "#141010",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
