@@ -21,8 +21,8 @@
     --red-glow: rgba(214, 40, 40, 0.45);
     --amber: #e0a526;
     --amber-glow: rgba(224, 165, 38, 0.5);
-    --green: #22a55b;
-    --green-glow: rgba(34, 165, 91, 0.5);
+    --green: #4595F5; /* 播緊嘅顏色（藍） */
+    --green-glow: rgba(69, 149, 245, 0.5);
     --text: #f5efe9;
     --muted: #9a8f88;
   }
@@ -82,7 +82,7 @@
   }
   .now-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .dot.live { background: var(--green); box-shadow: 0 0 0 4px rgba(34,165,91,0.25); }
+  .dot.live { background: var(--green); box-shadow: 0 0 0 4px rgba(69,149,245,0.25); }
   .dot.wait { background: var(--amber); }
   #nowTitle { font-size: 22px; font-weight: 600; margin: 8px 0 0; line-height: 1.35; }
   #nowTime { font-size: 14px; color: var(--muted); margin-top: 4px; }
@@ -387,7 +387,7 @@ function renderProgramme() {
       title,
       artist: current.name,
       album: 'mCR',
-      artwork: [{ src: 'artwork-playing.png', sizes: '512x512', type: 'image/png' }] // 綠色：鎖屏、頂部 Dynamic Island 會跟呢張圖嘅顏色
+      artwork: [{ src: 'artwork-playing.png', sizes: '512x512', type: 'image/png' }] // 藍色：鎖屏、頂部 Dynamic Island 會跟呢張圖嘅顏色
     });
   }
 }
